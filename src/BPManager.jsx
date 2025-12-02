@@ -1,37 +1,25 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Activity, Plus, Trash2, AlertCircle, FileText, Pill, Droplet, Save, Calendar, Heart, AlertTriangle, CheckCircle, Search, Clipboard, X } from 'lucide-react';
 
 // --- Medication Database ---
 const DRUG_DB = [
-  // Thiazide Diuretics
   { keywords: ['chlorothiazide', 'diuril', 'chlorthalidone', 'hydrochlorothiazide', 'microzide', 'hydrodiuril', 'polythiazide', 'renese', 'indapamide', 'lozol', 'metolazone', 'mykrox', 'zaroxolyn'], class: 'Thiazide Diuretic' },
-  // Loop Diuretics
   { keywords: ['bumetanide', 'bumex', 'furosemide', 'lasix', 'torsemide', 'demadex'], class: 'Loop Diuretic' },
-  // Potassium-sparing Diuretics
   { keywords: ['amiloride', 'midamor', 'triamterene', 'dyrenium'], class: 'K-Sparing Diuretic' },
-  // Aldosterone Receptor Blockers
   { keywords: ['eplerenone', 'inspra', 'spironolactone', 'aldactone'], class: 'Aldosterone Antagonist' },
-  // Beta Blockers (including ISA and Combined)
   { keywords: ['atenolol', 'tenormin', 'betaxolol', 'kerlone', 'bisoprolol', 'zebeta', 'metoprolol', 'lopressor', 'toprol', 'nadolol', 'corgard', 'propranolol', 'inderal', 'timolol', 'blocadren', 'acebutolol', 'sectral', 'penbutolol', 'levatol', 'pindolol', 'carvedilol', 'coreg', 'labetalol', 'normodyne', 'trandate'], class: 'Beta Blocker' },
-  // ACE Inhibitors
   { keywords: ['benazepril', 'lotensin', 'captopril', 'capoten', 'enalapril', 'vasotec', 'fosinopril', 'monopril', 'lisinopril', 'prinivil', 'zestril', 'moexipril', 'univasc', 'perindopril', 'aceon', 'quinapril', 'accupril', 'ramipril', 'altace', 'trandolapril', 'mavik'], class: 'ACE Inhibitor' },
-  // ARBs (Angiotensin II Antagonists)
   { keywords: ['candesartan', 'atacand', 'eprosartan', 'teveten', 'irbesartan', 'avapro', 'losartan', 'cozaar', 'olmesartan', 'benicar', 'telmisartan', 'micardis', 'valsartan', 'diovan'], class: 'ARB' },
-  // CCBs (Calcium Channel Blockers - Dihydropyridines & Non-dihydropyridines)
   { keywords: ['diltiazem', 'cardizem', 'dilacor', 'tiazac', 'verapamil', 'calan', 'isoptin', 'covera', 'verelan', 'amlodipine', 'norvasc', 'felodipine', 'plendil', 'isradipine', 'dynacirc', 'nicardipine', 'cardene', 'nifedipine', 'adalat', 'procardia', 'nisoldipine', 'sular'], class: 'Calcium Channel Blockers' },
-  // Alpha-1 Blockers
   { keywords: ['doxazosin', 'cardura', 'prazosin', 'minipress', 'terazosin', 'hytrin'], class: 'Alpha-1 Blocker' },
-  // Central Alpha-2 Agonists
   { keywords: ['clonidine', 'catapres', 'methyldopa', 'aldomet', 'reserpine', 'guanfacine', 'tenex'], class: 'Central Alpha Agonist' },
-  // Direct Vasodilators
   { keywords: ['hydralazine', 'apresoline', 'minoxidil', 'loniten'], class: 'Direct Vasodilator' }
 ];
 
 const BPManager = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [showDisclaimer, setShowDisclaimer] = useState(true);
-
+  
   // --- State Data ---
   const [readings, setReadings] = useState([
     { id: 1, date: '2023-10-24', sys: 142, dia: 88, hr: 72 },
@@ -82,13 +70,9 @@ const BPManager = () => {
   }, [readings]);
 
   // --- Handlers ---
-  
-  // New Med Name Change Handler (Auto-assigns class)
   const handleMedNameChange = (e) => {
     const name = e.target.value;
     let detectedClass = 'Other';
-    
-    // Search DB
     const lowerName = name.toLowerCase();
     for (const group of DRUG_DB) {
       if (group.keywords.some(k => lowerName.includes(k))) {
@@ -96,15 +80,11 @@ const BPManager = () => {
         break;
       }
     }
-
     setNewMed({ ...newMed, name: name, class: detectedClass });
   };
 
-  // --- Recommendations Engine ---
   const generateRecommendations = () => {
     const recs = [];
-    
-    // --- 1. CRITICAL VALUE CHECK (Overrides everything) ---
     const criticalReading = readings.find(r => r.sys < 95 || r.sys > 180);
 
     if (criticalReading) {
@@ -115,19 +95,15 @@ const BPManager = () => {
       }];
     }
 
-    // --- Standard Logic ---
     const isUncontrolled = averages.sys >= 130 || averages.dia >= 80;
-    const isHyperkalemic = labs.potassium > 5.0; // Check for high potassium
+    const isHyperkalemic = labs.potassium > 5.0;
     
-    // Check current classes (Robust includes check for normalized strings)
     const hasACE = meds.some(m => m.class.includes('ACE'));
     const hasARB = meds.some(m => m.class.includes('ARB'));
     const hasThiazide = meds.some(m => m.class.includes('Thiazide'));
     const hasCCB = meds.some(m => m.class.includes('Calcium'));
-    
     const hasRASBlockade = hasACE || hasARB;
 
-    // 2. BP Control Status
     if (isUncontrolled) {
       recs.push({
         type: 'warning',
@@ -135,10 +111,7 @@ const BPManager = () => {
         text: `Current average is ${averages.sys}/${averages.dia}. Intensification of therapy recommended.`
       });
 
-      // 3. Medication Strategy Logic
       if (meds.length === 0) {
-        // --- Naive Patient ---
-        // Safety: Only recommend ARB for DM/CKD if Potassium is safe (<= 5.0)
         if ((patientHistory.diabetes || patientHistory.ckd) && !isHyperkalemic) {
           recs.push({
             type: 'alert',
@@ -151,12 +124,8 @@ const BPManager = () => {
             text: 'Repeat BMP in 14-21 days to check Potassium and Creatinine after starting ARB.'
           });
         } else {
-          // Build list options
           let monotherapyOptions = ['Thiazide Diuretic', 'Calcium Channel Blockers'];
-          // Only add ACE/ARB if NOT hyperkalemic
-          if (!isHyperkalemic) {
-              monotherapyOptions.push('ACE/ARB');
-          }
+          if (!isHyperkalemic) monotherapyOptions.push('ACE/ARB');
 
           recs.push({
             type: 'info',
@@ -171,10 +140,6 @@ const BPManager = () => {
           });
         }
       } else {
-        // --- Already Treated ---
-        
-        // --- PRIORITY CHECK: Diabetes/CKD without RAS Blockade ---
-        // Only trigger this if K+ is safe. If K > 5.0, we skip this priority recommendation.
         if ((patientHistory.diabetes || patientHistory.ckd) && !hasRASBlockade && !isHyperkalemic) {
              recs.push({
                 type: 'alert',
@@ -182,18 +147,15 @@ const BPManager = () => {
                 text: 'Patient has history of Diabetes/CKD but is not on a RAS blocker. Add ACE Inhibitor or ARB for renal protection as priority.',
                 list: ['ACE Inhibitor', 'ARB']
              });
-             
              recs.push({
                 type: 'info',
                 title: 'Monitoring Plan',
                 text: 'Repeat BMP in 14-21 days to check Potassium and Creatinine after starting ACE/ARB.'
              });
         } else {
-            // --- Standard Complementary Logic ---
             let options = [];
             if (!hasThiazide) options.push('Thiazide Diuretic');
             if (!hasCCB) options.push('Calcium Channel Blockers');
-            // Only suggest adding ACE/ARB if K+ is <= 5.0
             if (!hasRASBlockade && !isHyperkalemic) options.push('ACE/ARB');
     
             if (options.length > 0) {
@@ -201,20 +163,13 @@ const BPManager = () => {
                let text = 'Consider adding a complementary class to current regimen:';
                let recommendedOptions = options;
     
-               // --- UPDATED LOGIC: SBP > 140 ---
                if (averages.sys > 140) {
                  title = 'Recommendation: Intensify Therapy';
-                 // Logic fix: Show all available first-line options that are not currently taken.
                  recommendedOptions = options; 
                  text = 'Add complementary class from the following options:';
                }
     
-               recs.push({
-                type: 'alert',
-                title: title,
-                text: text,
-                list: recommendedOptions
-              });
+               recs.push({ type: 'alert', title: title, text: text, list: recommendedOptions });
               
                const needsLabMonitoring = recommendedOptions.some(o => o.includes('Thiazide') || o.includes('ACE') || o.includes('ARB'));
                if (needsLabMonitoring) {
@@ -225,32 +180,17 @@ const BPManager = () => {
                  });
                }
             } else {
-              recs.push({
-                type: 'warning',
-                title: 'Resistant Hypertension',
-                text: 'Patient is on multiple first-line classes. Consider mineralocorticoid receptor antagonists (e.g., Spironolactone) or referring to specialist.'
-              });
+              recs.push({ type: 'warning', title: 'Resistant Hypertension', text: 'Patient is on multiple first-line classes. Consider mineralocorticoid receptor antagonists (e.g., Spironolactone) or referring to specialist.' });
             }
         }
       }
-
     } else {
-      recs.push({
-        type: 'success',
-        title: 'BP Controlled',
-        text: 'Blood pressure is within goal (<130/80). Continue current therapy.'
-      });
+      recs.push({ type: 'success', title: 'BP Controlled', text: 'Blood pressure is within goal (<130/80). Continue current therapy.' });
     }
 
-    // 4. Safety Checks
     if (labs.potassium > 5.0 && hasRASBlockade) {
-      recs.push({
-        type: 'alert',
-        title: 'Safety Warning: Hyperkalemia',
-        text: `Potassium is ${labs.potassium}. Review ACE/ARB dosage or consider alternatives.`
-      });
+      recs.push({ type: 'alert', title: 'Safety Warning: Hyperkalemia', text: `Potassium is ${labs.potassium}. Review ACE/ARB dosage or consider alternatives.` });
     }
-
     return recs;
   };
 
@@ -270,82 +210,47 @@ const BPManager = () => {
     setNewReading({ sys: '', dia: '', hr: '', date: new Date().toISOString().split('T')[0] });
   };
   
-  // NEW ROBUST IMPORT HANDLER
   const handleBulkImport = () => {
     if (!importText) return;
-    
     const lines = importText.split('\n');
     const newReadings = [];
     const today = new Date().toISOString().split('T')[0];
     const currentYear = new Date().getFullYear();
     
     lines.forEach(line => {
-      // 1. Clean formatting
       let text = line.trim();
       if (!text) return;
-
-      // 2. Extract Date (try specific formats first)
       let date = today;
-      // Regex for MM/DD/YYYY, YYYY-MM-DD, MM-DD, etc.
       const dateMatch = text.match(/(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})|(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})|(\d{1,2}[\/\-.]\d{1,2})/);
-      
       if (dateMatch) {
         let dStr = dateMatch[0];
-        // If short date (e.g. 10/25), add current year
-        if (dStr.match(/^\d{1,2}[\/\-.]\d{1,2}$/)) {
-            dStr = `${dStr}/${currentYear}`;
-        }
+        if (dStr.match(/^\d{1,2}[\/\-.]\d{1,2}$/)) dStr = `${dStr}/${currentYear}`;
         const d = new Date(dStr);
         if (!isNaN(d.getTime())) {
             date = d.toISOString().split('T')[0];
-            // Remove date from text to avoid number confusion
             text = text.replace(dateMatch[0], ''); 
         }
       }
-
-      // 3. Extract BP & HR
-      let sys = null;
-      let dia = null;
-      let hr = 0;
-
-      // Priority 1: Explicit "120/80" format with slash
+      let sys = null, dia = null, hr = 0;
       const slashMatch = text.match(/(\d{2,3})\s*[\/]\s*(\d{2,3})/);
       if (slashMatch) {
-          sys = parseInt(slashMatch[1]);
-          dia = parseInt(slashMatch[2]);
-          text = text.replace(slashMatch[0], ''); // Remove BP string to look for HR later
+          sys = parseInt(slashMatch[1]); dia = parseInt(slashMatch[2]);
+          text = text.replace(slashMatch[0], '');
       } else {
-          // Priority 2: Look for valid pairs in remaining numbers (Handling Excel columns)
           const numbers = text.match(/\d+/g);
           if (numbers) {
               const nums = numbers.map(n => parseInt(n));
-              
-              // Look for a pair that looks like BP (Sys > Dia, ranges valid)
               for (let i = 0; i < nums.length - 1; i++) {
-                  const val1 = nums[i];
-                  const val2 = nums[i+1];
-                  
-                  // Sys: 70-300, Dia: 30-150, Sys > Dia
+                  const val1 = nums[i], val2 = nums[i+1];
                   if (val1 > 60 && val1 < 300 && val2 > 30 && val2 < 160 && val1 > val2) {
-                      sys = val1;
-                      dia = val2;
-                      // Remove these used numbers from search for HR
-                      // We act on the original text or just flag these as used
-                      // Simplest is to just grab HR from remainder if possible, 
-                      // or if we have a 3rd number right here
-                      if (nums[i+2]) {
-                          const val3 = nums[i+2];
-                          if (val3 > 30 && val3 < 200) hr = val3;
-                      }
+                      sys = val1; dia = val2;
+                      if (nums[i+2] && nums[i+2] > 30 && nums[i+2] < 200) hr = nums[i+2];
                       break;
                   }
               }
           }
       }
-      
-      // Look for HR if not found yet and we have a BP
       if (sys && dia && !hr) {
-          // Look for any remaining number that fits HR range
           const remainingNums = text.match(/\d+/g);
           if (remainingNums) {
              const rNums = remainingNums.map(n => parseInt(n));
@@ -353,16 +258,7 @@ const BPManager = () => {
              if (potentialHr) hr = potentialHr;
           }
       }
-
-      if (sys && dia) {
-        newReadings.push({
-            id: Date.now() + Math.random(),
-            date,
-            sys,
-            dia,
-            hr
-        });
-      }
+      if (sys && dia) newReadings.push({ id: Date.now() + Math.random(), date, sys, dia, hr });
     });
     
     if (newReadings.length > 0) {
@@ -371,7 +267,7 @@ const BPManager = () => {
       setImportText('');
       setShowImport(false);
     } else {
-      alert("No valid readings detected.\n\nTry formats like:\n• 120/80\n• 120 80 72 (Excel columns)\n• 10/25 120/80");
+      alert("No valid readings detected.");
     }
   };
 
@@ -381,37 +277,8 @@ const BPManager = () => {
     setNewMed({ name: '', dose: '', freq: '', class: '' });
   };
 
-  const handleDeleteMed = (id) => {
-    setMeds(meds.filter(m => m.id !== id));
-  };
-
-  const handleDeleteReading = (id) => {
-    setReadings(readings.filter(r => r.id !== id));
-  };
-
-  // --- Components ---
-
-  if (showDisclaimer) {
-    return (
-      <div className="fixed inset-0 bg-slate-900 bg-opacity-95 z-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-lg w-full rounded-xl shadow-2xl p-8">
-          <div className="flex items-center space-x-3 mb-6 text-red-600">
-            <AlertCircle size={40} />
-            <h2 className="text-2xl font-bold">Safety Warning</h2>
-          </div>
-          <p className="text-slate-700 mb-4 leading-relaxed">
-            This is a <strong>demo prototype</strong>.
-          </p>
-          <p className="text-slate-700 mb-6 leading-relaxed">
-            The algorithms presented (Goal &lt; 130/80) are for demonstration purposes only. Do not use for actual medical treatment without physician oversight.
-          </p>
-          <button onClick={() => setShowDisclaimer(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition">
-            I Understand - Enter Demo
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const handleDeleteMed = (id) => { setMeds(meds.filter(m => m.id !== id)); };
+  const handleDeleteReading = (id) => { setReadings(readings.filter(r => r.id !== id)); };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
@@ -440,15 +307,12 @@ const BPManager = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        
         {/* DASHBOARD VIEW */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            
             {/* CLINICAL ANALYSIS */}
             <div className="bg-slate-800 text-white rounded-xl shadow-lg overflow-hidden relative">
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full opacity-10 blur-3xl -mt-10 -mr-10 pointer-events-none"></div>
-              
               <div className="flex flex-col md:flex-row">
                 {/* Left Side: Logic Output */}
                 <div className="p-6 md:w-2/3 space-y-4 relative z-10">
@@ -456,7 +320,6 @@ const BPManager = () => {
                     <FileText size={20} className="mr-2 text-blue-400" />
                     Clinical Analysis
                   </h3>
-                  
                   <div className="space-y-3">
                     {recommendations.map((rec, idx) => (
                       <div key={idx} className={`p-4 rounded-lg border-l-4 ${
@@ -488,7 +351,6 @@ const BPManager = () => {
                     ))}
                   </div>
                 </div>
-
                 {/* Right Side: Clinical Context */}
                 <div className="p-6 md:w-1/3 bg-slate-900/50 border-l border-slate-700/50 text-sm">
                    <h4 className="font-bold text-slate-400 uppercase tracking-wider mb-3">Patient History</h4>
@@ -500,7 +362,6 @@ const BPManager = () => {
                         <input type="checkbox" className="hidden" checked={patientHistory.diabetes} onChange={(e) => setPatientHistory({...patientHistory, diabetes: e.target.checked})} />
                         <span className="text-slate-300 group-hover:text-white transition">Diabetes History</span>
                       </label>
-
                       <label className="flex items-center space-x-3 cursor-pointer group">
                         <div className={`w-5 h-5 rounded border flex items-center justify-center transition ${patientHistory.ckd ? 'bg-blue-500 border-blue-500' : 'border-slate-500 group-hover:border-slate-400'}`}>
                            {patientHistory.ckd && <CheckCircle size={14} className="text-white" />}
@@ -509,7 +370,6 @@ const BPManager = () => {
                         <span className="text-slate-300 group-hover:text-white transition">CKD (Chronic Kidney)</span>
                       </label>
                    </div>
-
                    <h4 className="font-bold text-slate-400 uppercase tracking-wider mb-3 border-t border-slate-700 pt-4">Current Regimen</h4>
                    <div className="space-y-2 mb-6">
                      {meds.length > 0 ? (
@@ -523,7 +383,6 @@ const BPManager = () => {
                        <div className="text-slate-600 italic">No active medications</div>
                      )}
                    </div>
-
                    <h4 className="font-bold text-slate-400 uppercase tracking-wider mb-3 border-t border-slate-700 pt-4">Relevant Labs</h4>
                    <div className="space-y-2">
                      <div className="flex justify-between text-slate-300">
@@ -538,7 +397,6 @@ const BPManager = () => {
                 </div>
               </div>
             </div>
-
             {/* Top Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -550,7 +408,6 @@ const BPManager = () => {
                   <span className="text-sm text-slate-400">mmHg</span>
                 </div>
               </div>
-              
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                 <h3 className="text-sm font-medium text-slate-500 mb-1">Last Lab Date</h3>
                 <div className="flex items-baseline space-x-2">
@@ -558,7 +415,6 @@ const BPManager = () => {
                   <span className="text-sm text-slate-400">2023</span>
                 </div>
               </div>
-
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                 <h3 className="text-sm font-medium text-slate-500 mb-1">Active Meds</h3>
                 <div className="flex items-baseline space-x-2">
@@ -567,7 +423,6 @@ const BPManager = () => {
                 </div>
               </div>
             </div>
-
             {/* Main Content Split */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
@@ -587,7 +442,6 @@ const BPManager = () => {
                     </ResponsiveContainer>
                   </div>
                 </div>
-
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                     <h3 className="text-lg font-bold text-slate-800">Recent Readings</h3>
@@ -613,7 +467,6 @@ const BPManager = () => {
                   </table>
                 </div>
               </div>
-
               <div className="lg:col-span-1 space-y-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-slate-800 mb-3 flex items-center">
@@ -651,15 +504,10 @@ const BPManager = () => {
                 <h2 className="text-xl font-bold text-slate-800">Manage Readings</h2>
                 <p className="text-sm text-slate-500">Log your daily AM and PM pressures.</p>
               </div>
-              <button 
-                onClick={() => setShowImport(true)} 
-                className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 flex items-center"
-              >
+              <button onClick={() => setShowImport(true)} className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 flex items-center">
                 <Clipboard size={14} className="mr-1.5" /> Bulk Import
               </button>
             </div>
-            
-            {/* Bulk Import Overlay */}
             {showImport && (
               <div className="bg-blue-50 p-6 border-b border-blue-100 relative">
                  <button onClick={() => setShowImport(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
@@ -678,17 +526,12 @@ const BPManager = () => {
                    placeholder={`10/25/2023 125/82 72\n10/26/2023 120/80 70\n118/78`}
                  />
                  <div className="flex justify-end mt-3">
-                   <button 
-                     onClick={handleBulkImport}
-                     className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-                     disabled={!importText.trim()}
-                   >
+                   <button onClick={handleBulkImport} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50" disabled={!importText.trim()}>
                      Process & Add Readings
                    </button>
                  </div>
               </div>
             )}
-            
             <div className="p-6 bg-slate-50 border-b border-slate-100">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end mb-4">
                 <div className="col-span-2 md:col-span-2">
@@ -720,7 +563,6 @@ const BPManager = () => {
                 </div>
               </div>
             </div>
-
             <div className="divide-y divide-slate-100">
               {readings.slice().reverse().map(r => (
                 <div key={r.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
@@ -744,20 +586,13 @@ const BPManager = () => {
               <h2 className="text-xl font-bold text-slate-800">Current Medications</h2>
               <p className="text-sm text-slate-500">Medication classes affect recommendation logic.</p>
             </div>
-
             <div className="p-6 bg-slate-50 border-b border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="col-span-1 md:col-span-2 relative">
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Medication Name</label>
                 <div className="relative">
-                  <input 
-                    placeholder="e.g., Lisinopril, Amlodipine" 
-                    value={newMed.name}
-                    onChange={handleMedNameChange}
-                    className="w-full p-2 pl-9 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
+                  <input placeholder="e.g., Lisinopril, Amlodipine" value={newMed.name} onChange={handleMedNameChange} className="w-full p-2 pl-9 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
                   <Search size={16} className="absolute left-3 top-3 text-slate-400" />
                 </div>
-                {/* Auto-detected class display */}
                 <div className="mt-2 text-xs flex items-center text-slate-500 bg-slate-100 p-2 rounded border border-slate-200">
                    <span className="font-bold mr-2 uppercase">Detected Class:</span> 
                    <span className={newMed.class === 'Other' || !newMed.class ? 'text-slate-400 italic' : 'text-blue-600 font-bold'}>
@@ -765,27 +600,16 @@ const BPManager = () => {
                    </span>
                 </div>
               </div>
-              
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Dose</label>
-                <input 
-                  placeholder="e.g., 10mg" 
-                  value={newMed.dose}
-                  onChange={(e) => setNewMed({...newMed, dose: e.target.value})}
-                  className="w-full p-2 border border-slate-300 rounded"
-                />
+                <input placeholder="e.g., 10mg" value={newMed.dose} onChange={(e) => setNewMed({...newMed, dose: e.target.value})} className="w-full p-2 border border-slate-300 rounded" />
               </div>
-              
               <div className="flex items-end">
-                <button 
-                  onClick={handleAddMed}
-                  className="w-full bg-emerald-600 text-white h-[42px] rounded font-medium hover:bg-emerald-700 flex items-center justify-center"
-                >
+                <button onClick={handleAddMed} className="w-full bg-emerald-600 text-white h-[42px] rounded font-medium hover:bg-emerald-700 flex items-center justify-center">
                   <Plus size={18} className="mr-1" /> Add Medication
                 </button>
               </div>
             </div>
-
             <div className="divide-y divide-slate-100">
               {meds.map(m => (
                 <div key={m.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
@@ -825,7 +649,6 @@ const BPManager = () => {
                   <input type="number" value={labs.potassium} onChange={(e) => setLabs({...labs, potassium: parseFloat(e.target.value)})} className="w-20 p-2 border border-slate-300 rounded font-bold text-center" />
                 </div>
               </div>
-
               <div>
                 <label className="flex justify-between text-sm font-medium text-slate-700 mb-1">
                   <span>Serum Creatinine</span>
@@ -836,7 +659,6 @@ const BPManager = () => {
                   <input type="number" value={labs.creatinine} onChange={(e) => setLabs({...labs, creatinine: parseFloat(e.target.value)})} className="w-20 p-2 border border-slate-300 rounded font-bold text-center" />
                 </div>
               </div>
-
               <div className="pt-6 border-t border-slate-100 flex justify-end">
                 <button onClick={() => setActiveTab('dashboard')} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium flex items-center">
                   <Save size={18} className="mr-2" /> Save & Analyze
@@ -845,7 +667,6 @@ const BPManager = () => {
             </div>
           </div>
         )}
-
       </main>
     </div>
   );

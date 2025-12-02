@@ -1,7 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 body {
-  background-color: #f8fafc; /* slate-50 matches the app background */
+  background-color: #f8fafc;
 }
